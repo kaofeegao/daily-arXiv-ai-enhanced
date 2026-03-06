@@ -10,6 +10,8 @@ class ArxivSpider(scrapy.Spider):
         categories = categories.split(",")
         # 保存目标分类列表，用于后续验证
         self.target_categories = set(map(str.strip, categories))
+        # 添加开关控制是否提取所有学科分类
+        self.extract_all_subjects = os.environ.get("EXTRACT_ALL_SUBJECTS", "true").lower() == "true"
         self.start_urls = [
             f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories
         ]  # 起始URL（计算机科学领域的最新论文）
@@ -47,15 +49,18 @@ class ArxivSpider(scrapy.Spider):
             if not paper_dd:
                 continue
             
-            # 提取论文分类信息 - 在subjects部分
-            subjects_text = paper_dd.css(".list-subjects .primary-subject::text").get()
-            if not subjects_text:
-                # 如果找不到主分类，尝试其他方式获取分类
+            # 根据开关选择不同的处理逻辑
+            if self.extract_all_subjects:
+                # 新逻辑：提取所有学科分类
                 subjects_text = paper_dd.css(".list-subjects::text").get()
+            else:
+                # 原逻辑：只提取主分类
+                subjects_text = paper_dd.css(".list-subjects .primary-subject::text").get()
+                if not subjects_text:
+                    subjects_text = paper_dd.css(".list-subjects::text").get()
             
             if subjects_text:
-                # 解析分类信息，通常格式如 "Computer Vision and Pattern Recognition (cs.CV)"
-                # 提取括号中的分类代码
+                # 解析分类信息
                 categories_in_paper = re.findall(r'\(([^)]+)\)', subjects_text)
                 
                 # 检查论文分类是否与目标分类有交集
@@ -75,3 +80,4 @@ class ArxivSpider(scrapy.Spider):
                     "id": arxiv_id,
                     "categories": [],
                 }
+
