@@ -61,7 +61,8 @@ class ArxivSpider(scrapy.Spider):
             
             if subjects_text:
                 # 解析分类信息
-                categories_in_paper = re.findall(r'\(([^)]+)\)', subjects_text)
+                # 使用更灵活的正则表达式提取分类代码
+                categories_in_paper = re.findall(r'\b([a-z]{2,}\.[A-Z]{2,})\b', subjects_text)
                 
                 # 检查论文分类是否与目标分类有交集
                 paper_categories = set(categories_in_paper)
