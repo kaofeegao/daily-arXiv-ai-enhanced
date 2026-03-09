@@ -52,13 +52,19 @@ class ArxivSpider(scrapy.Spider):
             # 根据开关选择不同的处理逻辑
             if self.extract_all_subjects:
                 # 新逻辑：提取所有学科分类
-                subjects_text = paper_dd.css(".list-subjects::text").get()
+                subjects_text = paper_dd.css(".list-subjects ::text").getall()
+                if subjects_text:
+                    subjects_text = " ".join(subjects_text).strip()
             else:
                 # 原逻辑：只提取主分类
                 subjects_text = paper_dd.css(".list-subjects .primary-subject::text").get()
                 if not subjects_text:
-                    subjects_text = paper_dd.css(".list-subjects::text").get()
-            
+                    subjects_text = paper_dd.css(".list-subjects ::text").getall()
+                    if subjects_text:
+                        subjects_text = " ".join(subjects_text).strip()
+
+            # self.logger.warning(f"【kaofee log】subjects_text: {subjects_text}")
+ 
             if subjects_text:
                 # 解析分类信息
                 # 使用更灵活的正则表达式提取分类代码
