@@ -149,7 +149,29 @@ jobs:
             exit 1
         fi
         echo "Markdown转换完成 / Markdown conversion completed"
-        
+
+    - name: Send Email Notification
+      if: steps.dedup_check.outputs.has_new_content == 'true'
+      uses: actions/email@v2
+      with:
+        to: gaoyefei@yeah.net
+        subject: "每日 arXiv AI 增强论文 - ${{ steps.crawl_step.outputs.crawl_date }}"
+        body: |
+          您好，
+
+          今日的 arXiv AI 增强论文已生成，请查收附件。
+
+          祝好，
+          arXiv Daily AI Enhanced
+        attachments: |
+          ${{ steps.crawl_step.outputs.crawl_date }}.md
+        from: arXiv Daily AI Enhanced
+        host: smtp.yeah.net
+        port: 587
+        username: ${{ secrets.SMTP_USER }}
+        password: ${{ secrets.SMTP_PASS }}
+        secure: starttls
+            
     - name: Update file list
       if: steps.dedup_check.outputs.has_new_content == 'true'
       run: |
