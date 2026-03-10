@@ -152,25 +152,75 @@ jobs:
 
     - name: Send Email Notification
       if: steps.dedup_check.outputs.has_new_content == 'true'
-      uses: actions/email@v2
-      with:
-        to: gaoyefei@yeah.net
-        subject: "每日 arXiv AI 增强论文 - ${{ steps.crawl_step.outputs.crawl_date }}"
-        body: |
-          您好，
+      run: |
+        echo "发送邮件通知... / Sending email notification..."
+        today=${{ steps.crawl_step.outputs.crawl_date }}
+        
+        # 设置邮件参数 / Set email parameters
+        RECIPIENT="gaoyefei@yeah.net"
+        SUBJECT="每日 arXiv AI 增强论文 - $today"
+        BODY="您好，\n\n今日的 arXiv AI 增强论文已生成，请查收附件。\n\n祝好，\narXiv Daily AI Enhanced"
+        
+        # 查找生成的 md 文件 / Find generated md file
+        MD_FILE=$(ls data/*.md 2>/dev/null | head -n1)
+        
+        if [ -z "$MD_FILE" ]; then
+            echo "错误：未找到生成的 md 文件 / Error: No generated md file found"
+            exit 1
+        fi
+        
+        echo "找到 md 文件: $MD_FILE / Found md file: $MD_FILE"
+        
+        # 使用 curl 发送邮件（使用 SMTP）/ Use curl to send email via SMTP
+        # 配置邮件服务器信息（需要替换为实际的 SMTP 服务器）/ Configure SMTP server info (replace with actual SMTP server)
+        SMTP_SERVER="smtp.yeah.net"
+        SMTP_PORT="587"
+        SMTP_USER="${{ secrets.SMTP_USER }}"
+        SMTP_PASS="${{ secrets.SMTP_PASS }}"
+        
+        if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then
+            echo "警告：SMTP 凭据未设置，跳过邮件发送 / Warning: SMTP credentials not set, skipping email sending"
+            exit 0
+        fi
+        
+        # 创建邮件内容 / Create email content
+        EMAIL_CONTENT=$(cat << EOF
+        From: arXiv Daily AI Enhanced <${SMTP_USER}>
+        To: $RECIPIENT
+        Subject: $SUBJECT
+        Content-Type: multipart/mixed; boundary="boundary"
 
-          今日的 arXiv AI 增强论文已生成，请查收附件。
+        --boundary
+        Content-Type: text/plain; charset="UTF-8"
+        Content-Transfer-Encoding: 7bit
 
-          祝好，
-          arXiv Daily AI Enhanced
-        attachments: |
-          ${{ steps.crawl_step.outputs.crawl_date }}.md
-        from: arXiv Daily AI Enhanced
-        host: smtp.yeah.net
-        port: 587
-        username: ${{ secrets.SMTP_USER }}
-        password: ${{ secrets.SMTP_PASS }}
-        secure: starttls
+        $BODY
+
+        --boundary
+        Content-Type: application/octet-stream; name="$(basename "$MD_FILE")"
+        Content-Transfer-Encoding: base64
+        Content-Disposition: attachment; filename="$(basename "$MD_FILE")"
+
+        $(base64 -w 0 "$MD_FILE")
+
+        --boundary--
+        EOF
+        )
+        
+        # 发送邮件 / Send email
+        echo "$EMAIL_CONTENT" | curl -v --ssl-reqd \
+            --mail-from "$SMTP_USER" \
+            --mail-rcpt "$RECIPIENT" \
+            --url "smtp://$SMTP_SERVER:$SMTP_PORT" \
+            --user "$SMTP_USER:$SMTP_PASS" \
+            -T -
+        
+        if [ $? -eq 0 ]; then
+            echo "✅ 邮件发送成功 / Email sent successfully"
+        else
+            echo "❌ 邮件发送失败 / Email sending failed"
+            exit 1
+        fi
             
     - name: Update file list
       if: steps.dedup_check.outputs.has_new_content == 'true'
