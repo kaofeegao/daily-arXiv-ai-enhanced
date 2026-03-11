@@ -12,6 +12,7 @@ class ArxivSpider(scrapy.Spider):
         self.target_categories = set(map(str.strip, categories))
         # 添加开关控制是否提取所有学科分类
         self.extract_all_subjects = os.environ.get("EXTRACT_ALL_SUBJECTS", "true").lower() == "true"
+        self.max_papers= int(os.environ.get("MAX_PAPERS", 10))  # 最大提取论文数
         self.start_urls = [
             f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories
         ]  # 起始URL（计算机科学领域的最新论文）
@@ -28,7 +29,11 @@ class ArxivSpider(scrapy.Spider):
                 anchors.append(int(href.split("item")[-1]))
 
         # 遍历每篇论文的详细信息
+        cnt = 0
         for paper in response.css("dl dt"):
+            if cnt >= self.max_papers:
+                break
+            cnt += 1
             paper_anchor = paper.css("a[name^='item']::attr(name)").get()
             if not paper_anchor:
                 continue

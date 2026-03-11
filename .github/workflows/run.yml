@@ -211,7 +211,7 @@ jobs:
         echo "$EMAIL_CONTENT" | curl -v --ssl-reqd \
             --mail-from "$SMTP_USER" \
             --mail-rcpt "$RECIPIENT" \
-            --url "smtp://$SMTP_SERVER:$SMTP_PORT" \
+            --url "smtps://$SMTP_SERVER:$SMTP_PORT" \
             --user "$SMTP_USER:$SMTP_PASS" \
             -T -
         
