@@ -28,7 +28,6 @@ class ArxivSpider(scrapy.Spider):
                 anchors.append(int(href.split("item")[-1]))
 
         # 遍历每篇论文的详细信息
-        cnt = 0
         for paper in response.css("dl dt"):
             paper_anchor = paper.css("a[name^='item']::attr(name)").get()
             if not paper_anchor:
